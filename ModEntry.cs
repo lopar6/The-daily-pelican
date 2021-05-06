@@ -11,22 +11,18 @@ using StardewValley;
 namespace Newspaper
 {
     /// <summary>The mod entry point.</summary>
-    public class ModEntry : Mod, IAssetLoader
+    public class ModEntry : Mod
     {
-        /*********
-        ** Public methods
-        *********/
-        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
-        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        /*********** Public *********/
+        // 9876 to so it is unique
         public override void Entry(IModHelper helper)
         {
             // event += method to call
+            
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
         }
 
-        /// <summary>The method called after a new day starts.</summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event arguments.</param>
+        /*********** Private *********/
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
             string forecast = this.Helper.Reflection
@@ -43,25 +39,27 @@ namespace Newspaper
                 .GetMethod(new StardewValley.Objects.TV(), "getWeeklyRecipe")
                 .Invoke<string[]>();
             this.Monitor.Log(string.Join(" ", recipe), LogLevel.Debug);
-           
-            // using this as test
-            // this.Monitor.Log(CanLoad(IAssetInfo).ToString(), LogLevel.Debug);
+
+            Point paperSpot = this.Helper.Reflection
+                .GetMethod(new StardewValley.Locations.FarmHouse(), "getPorchStandingSpot")
+                .Invoke<Point>();
+
+            Vector2 porchLocation = new Vector2(paperSpot.X, paperSpot.Y);
+
+
+
+            
+            // This matches content patch newspaper
+            int newspaperID = 9876;
+
+            //public virtual bool dropObject(StardewValley.Object obj, Vector2 dropLocation, xTile.Dimensions.Rectangle viewport, bool initialPlacement, Farmer who = null);
+            StardewValley.Object newspaper = new StardewValley.Object(newspaperID, 1);
+            newspaper.destroyOvernight = true;
+
+            Game1.getLocationFromName("farm").dropObject(newspaper, porchLocation * 64f, Game1.viewport, true, (Farmer)null);
+
         }
 
-        public bool CanLoad<T>(IAssetInfo asset)
-        {
-            return asset.AssetNameEquals("PelicanCronicals");
-        }
-
-        /// <summary>Load a matched asset.</summary>
-        /// <param name="asset">Basic metadata about the asset being loaded.</param>
-        public T Load<T>(IAssetInfo asset)
-        {
-            return (T)(object)new Dictionary<string, string> // (T)(object) converts a known type to the generic 'T' placeholder
-            {
-                ["Introduction"] = "Hi there! My name is Jonathan."
-            };
-        }
 
     }
 }

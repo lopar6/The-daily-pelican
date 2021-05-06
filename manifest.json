@@ -2,7 +2,7 @@
     "Name": "The Daily Paper",
     "Author": "Neat",
     "Version": "1.0.0",
-    "Description": "Delivers a daily newspaper to your front door containing the weather, fortune, and recipie.",
+    "Description": "Delivers a daily newspaper to the users front door containing the weather, fortune, and recipie.",
     "UniqueID": "neat.newspaper",
     "EntryDll": "Newspaper.dll",
     "MinimumApiVersion": "3.0.0",
