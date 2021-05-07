@@ -1,0 +1,6 @@
+C:\Users\Logan\source\repos\Newspaper\obj\Debug\Newspaper.csproj.CoreCompileInputs.cache
+C:\Users\Logan\source\repos\Newspaper\bin\Debug\Newspaper.dll
+C:\Users\Logan\source\repos\Newspaper\bin\Debug\Newspaper.pdb
+C:\Users\Logan\source\repos\Newspaper\obj\Debug\Newspaper.dll
+C:\Users\Logan\source\repos\Newspaper\obj\Debug\Newspaper.pdb
+C:\Users\Logan\source\repos\Newspaper\obj\Debug\Newspaper.csprojAssemblyReference.cache

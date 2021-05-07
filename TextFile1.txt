@@ -1,0 +1,3 @@
+Notes and links
+
+https://stardewvalleywiki.com/Modding:Modder_Guide/APIs
