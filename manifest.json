@@ -6,5 +6,11 @@
     "UniqueID": "neat.newspaper",
     "EntryDll": "Newspaper.dll",
     "MinimumApiVersion": "3.0.0",
-    "UpdateKeys": []
+    "UpdateKeys": [],
+    "Dependencies": [
+      {
+        "UniqueID": "Neat.TodaysNewspaper",
+        "IsRequired":  true
+      }
+    ]
   }
