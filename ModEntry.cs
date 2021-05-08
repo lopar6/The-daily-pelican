@@ -37,17 +37,9 @@ namespace Newspaper
 
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
-            //helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.DayEnding += this.OnDayEnding;
         }
-        public string getFortune()
-        {
-            string forecast = this.Helper.Reflection
-                .GetMethod(new StardewValley.Objects.TV(), "getFortuneForecast")
-                .Invoke<string>(Game1.player);
-            this.Monitor.Log(forecast, LogLevel.Debug);
-            return forecast;
-        }
-        /*********** Private *********/
+
 
         private void Input_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
@@ -59,109 +51,44 @@ namespace Newspaper
             //action button works for right click on mouse and action button for controllers
             if (!e.Button.IsActionButton() && !e.Button.IsUseToolButton())
                 return;
-            //check if the clicked tile contains a Farm Renderer
+            // TODO add hover tags
+            //check if the selected tile is the newspaper
             Vector2 tile = Helper.Input.GetCursorPosition().GrabTile;
             Game1.currentLocation.Objects.TryGetValue(tile, out StardewValley.Object obj);
-            if(obj != null)
+            if (obj != null)
             {
-                if (obj.HasBeenPickedUpByFarmer)
+                if (obj.Name == "Newspaper")
                 {
-                    if (Game1.player.ActiveObject != null && Game1.player.ActiveObject.Name == "Newspaper")
+                    if (e.Button.IsActionButton() || e.Button.IsUseToolButton())
                     {
-                        if (e.Button.IsActionButton() || e.Button.IsUseToolButton())
-                        {
-                            Game1.drawObjectDialogue(obj.getDescription());
-                            this.Monitor.Log(obj.getDescription(), LogLevel.Debug);
-                        }
+                        Game1.drawLetterMessage(obj.getDescription());
+                        Game1.getLocationFromName("farm").removeObject(getPaperSpot(), false);
                     }
                 }
-                else
-                {
-                    if (obj.Name == "Newspaper")
-                    {
-                        if (e.Button.IsActionButton() || e.Button.IsUseToolButton())
-                        {    
-                           Game1.player.addItemToInventory(obj);
-                           obj.HasBeenPickedUpByFarmer = true;
-                        
-                        }    
-                    }
-                }
+
             }
-        }
-    /***
-        private void SendMoney()
-        {
-            string moneyBook = this.Helper.Reflection
-                .GetMethod(new StardewValley.d(), "getFortuneForecast")
-                .Invoke<string>(Game1.player);
-            this.Monitor.Log(forecast, LogLevel.Debug);
+            
         }
 
-        private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
-        {
-            if (!Context.IsWorldReady ||  e.Button.ToString().Equals("p"))
-                return;
-
-            SendMoney();
-        }
-***/
-        // object class inherits item
-
-        //string item_constuctor = this.Helper.Reflection
-        //    .GetMethod(new StardewValley.Item, "Item")
-        //    .Invoke<string>();
         public class NewspaperObject : StardewValley.Object
         {
-            private string _fortune;
-            private string _weather;
-            private string _recipe;
+            public new bool isRecipe;
+
             private string _description;
-            public NewspaperObject(){}
-            public NewspaperObject(string fortune, string weather, string recipe)
+            private IModHelper Helper;
+
+            public NewspaperObject() { }
+            public NewspaperObject(IModHelper helper)
             {
                 this.displayName = "The Daily Pelican";
-                this._fortune = fortune;
-                this._weather = weather;
-                this._recipe = recipe;
                 this.ParentSheetIndex = 931;
                 this.CanBeSetDown = false;
                 this.CanBeGrabbed = true;
                 this.IsSpawnedObject = true;
                 this.name = "Newspaper";
                 this.Price = 1;
-            }
-
-            public string fortune
-            {
-                get { return _fortune; }
-                set { _fortune = value; }
-            }
-
-            public string weather
-            {
-                get { return _weather; }
-                set { this._weather = value; }
-            }
-
-            public string recipe
-            {
-                get { return _recipe; }
-                set { this._recipe = value; }
-            }
-            public override string DisplayName
-            {
-                get { return DisplayName; }
-                set { this.DisplayName = value; }
-            }
-
-            public override string getDescription()
-            {
-                // TODO: add check for +1, 0, recepie name for description
-                _description = _description + _fortune;
-                _description = _description + _weather;
-                _description = _description + _recipe;
-                return _description;
+                this.isRecipe = true;
+                this.Helper = helper;
             }
             public override int Stack
             {
@@ -173,6 +100,175 @@ namespace Newspaper
             {
                 return true;
             }
+
+            public override string DisplayName
+            {
+                get { return DisplayName; }
+                set { this.DisplayName = value; }
+            }
+
+            public override string getDescription()
+            {
+                // TODO: add check for +1, 0, recepie name for description
+
+                // New line chars do not work!
+                // this is the aproxamate size of a line on the page window "                                                   "
+                // 50 chars ish. It is based on actual char sized, not fixed char size. 
+                // this solution is very hacky and needs redone 
+                             //"                                                   "
+                _description = "                 The Daily Pelican                  ";
+                _description += "                                                   ";
+                _description += getLuckValue();
+                _description += "                                                        ";
+                _description += getWeatherValue();
+                _description += "                                                        ";
+                _description += getExtraValue();
+
+                return _description;
+            }
+
+            private string getExtraValue()
+            {
+                string dayOfWeek = Game1.shortDayNameFromDayOfSeason(Game1.dayOfMonth);
+                string extraValue = "";
+
+
+                if (dayOfWeek.Equals("Mon") || dayOfWeek.Equals("Thu"))
+                {
+                    extraValue += fixLength("Livin' Off The Land");
+                    extraValue += getLivinLand();
+                }
+                if (dayOfWeek.Equals("Sun"))
+                {
+                    extraValue += fixLength("The Queen of Sauce");
+                    extraValue += getRecipe();
+                }
+                if (dayOfWeek.Equals("Wed") && Game1.stats.DaysPlayed > 7U)
+                {
+                    extraValue += fixLength("The Queen of Sauce Reprint");
+                    extraValue += getRecipe();
+
+                }
+                return extraValue;
+            }
+
+            private string getWeatherValue()
+            {
+                String weatherString = getWeather();
+                if (weatherString.Length < 50)
+                {
+                    return fixLength(weatherString);
+                }
+                else
+                {
+                    if(String.Equals(weatherString, "Partially cloudy with a light breeze. Expect lots of pollen!"))
+                    {
+                        return "Partially cloudy with a light breeze.              " +
+                               "    Expect lots of pollen!                         ";
+                    }
+                    if(String.Equals(weatherString, "It's going to be cloudy, with gusts of wind throughout the day."))
+                    { 
+                        return "It's going to be cloudy,                           " +
+                               "    with gusts of wind throughout the day.         ";
+                    }
+                    if (String.Equals(weatherString, "Looks like a storm is approaching. Thunder and lightning is expected."))
+                    {
+                        return "Looks like a storm is approaching.                 " +
+                               "    Thunder and lightning is expected.             ";
+                    }
+                    else
+                    {
+                        return "It's going to be clear and sunny tomorrow...       " +
+                               "    perfect weather for the Festival!              ";
+                    }
+
+                }
+            }
+
+            private string getLuckValue()
+            {
+                String fortuneString = getFortune();
+                if (String.Equals(fortuneString, "The spirits are very happy today! They will do their best to shower everyone with good fortune."))
+                {
+                    return "The spirits are very happy today!                  " +
+                           "    Greater than .07 luck!                         ";
+                } 
+                if(String.Equals(fortuneString, "The spirits are in good humor today. I think you'll have a little extra luck."))
+                {
+                    return "The spirits are in good humor today.               " +
+                           "    Between .02 and .07 luck.                      ";
+                }
+                if(String.Equals(fortuneString, "The spirits feel neutral today. The day is in your hands."))
+                {
+                    return "The spirits feel neutral today.                    " +
+                           "    Between .02 and -.02 luck.                     ";
+                }
+                if(String.Equals(fortuneString, "This is rare. The spirits feel absolutely neutral today"))
+                {
+                    return "The spirits feel absolutely neutral today.         " +
+                           "    This is rare.                                  ";
+                }
+                if (String.Equals(fortuneString, "The spirits are somewhat annoyed today. Luck will not be on your side."))
+                {
+                    return "The spirits are somewhat annoyed today.            " +
+                           "    Between -.02 and -.07 luck.                    ";
+                }
+                if(String.Equals(fortuneString, "The spirits are somewhat mildly perturbed today. Luck will not be on your side."))
+                {
+                    return "The spirits are somewhat mildly perturbed today.   " +
+                           "    Between -.02 and -.07 luck.                    ";
+                }
+                if(String.Equals(fortuneString, "The spirits are very displeased today. They will do their best to make your life difficult."))
+                {
+                    return "The spirits are very displeased today.             " +
+                           "    Less than -.07 Luck.                           ";
+                }
+                else
+                {
+                    return "No luck Value found. Gosh Dang.                    ";
+                }
+            }
+            private string getFortune()
+            {
+                string forecast = this.Helper.Reflection
+                    .GetMethod(new StardewValley.Objects.TV(), "getFortuneForecast")
+                    .Invoke<string>(Game1.player);
+                return forecast;
+            }
+
+            private string getWeather()
+            {
+                string weatherReport = this.Helper.Reflection
+                    .GetMethod(new StardewValley.Objects.TV(), "getWeatherForecast")
+                    .Invoke<string>();
+                return weatherReport;
+            }
+
+            private string getRecipe()
+            {
+                string[] recipeStringList = this.Helper.Reflection
+                    .GetMethod(new StardewValley.Objects.TV(), "getWeeklyRecipe")
+                    .Invoke<string[]>();
+                string recipe = string.Join("", recipeStringList);
+                return recipe;
+            }
+
+            private string getLivinLand()
+            {
+                string livinLand = this.Helper.Reflection
+                    .GetMethod(new StardewValley.Objects.TV(), "getTodaysTip")
+                    .Invoke<string>();
+                return livinLand;
+            }
+            private string fixLength(string str)
+            {
+                String _ = "";
+                for (int i = 0; i < 50 - str.Length; i++)
+                {
+                    _ += " ";
+                }
+                return str + _;
+            }
         }
 
         public class ServiceProvider : IServiceProvider
@@ -183,42 +279,26 @@ namespace Newspaper
             }
         }
 
-
-        private void OnDayStarted(object sender, DayStartedEventArgs e)
+        private Vector2 getPaperSpot()
         {
-
-            string fortune = this.Helper.Reflection
-                        .GetMethod(new StardewValley.Objects.TV(), "getFortuneForecast")
-                        .Invoke<string>(Game1.player);
-
-
-            string weatherReport = this.Helper.Reflection
-                .GetMethod(new StardewValley.Objects.TV(), "getWeatherForecast")
-                .Invoke<string>();
-
-
-            string[] recipeStringList = this.Helper.Reflection
-                .GetMethod(new StardewValley.Objects.TV(), "getWeeklyRecipe")
-                .Invoke<string[]>();
-            string recipe = string.Join("", recipeStringList);
-
-            NewspaperObject dailyPaper = new NewspaperObject(fortune, weatherReport, recipe);
-            //dailyPaper.actionWhenBeingHeld((Farmer)null);
-            //dailyPaper.canBeTrashed();
-            //dailyPaper.ShouldDrawIcon();
-            //dailyPaper.ShouldDrawIcon();
-
-                        
             Point paperSpot = this.Helper.Reflection
                 .GetMethod(new StardewValley.Locations.FarmHouse(), "getPorchStandingSpot")
                 .Invoke<Point>();
 
-            Vector2 porchLocation = new Vector2(paperSpot.X-1, paperSpot.Y);
+            Vector2 porchLocation = new Vector2(paperSpot.X - 1, paperSpot.Y);
+            return porchLocation;
+        }
+        
+        private void OnDayStarted(object sender, DayStartedEventArgs e)
+        {
+            NewspaperObject dailyPaper = new NewspaperObject(Helper);
+            StardewValley.Object newspaper = new StardewValley.Object(getPaperSpot(), 931, "The Daily Pelican", false, true, false, true);
+            Game1.getLocationFromName("farm").dropObject(dailyPaper, getPaperSpot() * 64f, Game1.viewport, true, (Farmer)null);
+        }
 
-            StardewValley.Object newspaper = new StardewValley.Object(porchLocation, 931, "The Daily Pelican", false, true, false, true);
-
-            Game1.getLocationFromName("farm").dropObject(dailyPaper, porchLocation * 64f, Game1.viewport, true, (Farmer)null);
-
+        private void OnDayEnding(object sender, DayEndingEventArgs e)
+        {
+            Game1.getLocationFromName("farm").removeObject(getPaperSpot(), false);
         }
     }
 }
