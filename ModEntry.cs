@@ -14,32 +14,45 @@ using StardewValley;
 
 namespace Newspaper
 {
-    /// <summary>The mod entry point.</summary>
-    public class ModEntry : Mod
-    {
-        /*********** Public *********/
-        // 9876 to so it is unique
-        
 
-        internal static IMonitor monitor;
+    public class ModEntry : Mod, IAssetEditor
+    {
+
         public override void Entry(IModHelper helper)
         {
-   
-            foreach (IContentPack contentPack in this.Helper.ContentPacks.GetOwned())
-            {
-                this.Monitor.Log("Reading content pack: {NewspaperContent.Manifest.Name} {NewspaperContent.Manifest.Version} from {Newspaper}", LogLevel.Debug);
-                
-                if (!contentPack.HasFile("content.json"))
-                {
-                    this.Monitor.Log("Required content pack 'NewspaperContent' Not found!", LogLevel.Debug);
-                }
-            }
+
+            Texture2D ObjectsTexture = helper.Content.Load<Texture2D>("Maps/SpringObjects", ContentSource.GameContent);
+            IDictionary<int, string> ObjectsDictionary= helper.Content.Load<IDictionary<int, string>>("Data/ObjectInformation", ContentSource.GameContent);
 
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.DayEnding += this.OnDayEnding;
         }
 
+        public bool CanEdit<T>(IAssetInfo asset)
+        {
+            if (asset.AssetNameEquals("Data/ObjectInformation") || asset.AssetNameEquals("Maps/SpringObjects"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public void Edit<T>(IAssetData asset)
+        {
+            if (asset.AssetNameEquals("Data/ObjectInformation"))
+            {
+                IDictionary<int, string> data = asset.AsDictionary<int, string>().Data;
+                data.Add(931, "The Daily Pelican/1/0/basic/The Daily Pelican/How Informative!");
+            }
+
+            if (asset.AssetNameEquals("Maps/SpringObjects"))
+            {
+                var editor = asset.AsImage();
+                Texture2D sourceImage = this.Helper.Content.Load<Texture2D>("newspaper.png", ContentSource.ModFolder);
+                editor.PatchImage(sourceImage, targetArea: new Rectangle(304, 608, 16, 16));
+            }
+        }
 
         private void Input_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
@@ -65,9 +78,7 @@ namespace Newspaper
                         Game1.getLocationFromName("farm").removeObject(getPaperSpot(), false);
                     }
                 }
-
-            }
-            
+            }       
         }
 
         public class NewspaperObject : StardewValley.Object
@@ -281,6 +292,7 @@ namespace Newspaper
 
         private Vector2 getPaperSpot()
         {
+
             Point paperSpot = this.Helper.Reflection
                 .GetMethod(new StardewValley.Locations.FarmHouse(), "getPorchStandingSpot")
                 .Invoke<Point>();
